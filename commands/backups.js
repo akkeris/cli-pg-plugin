@@ -6,7 +6,7 @@ function backup_list (appkit, args) {
     if(err) {
       return appkit.terminal.error(err);
     }
-    let pg = args.database ? args.database : data.filter((x) => x.addon_service.name === 'alamo-postgresql')[0]
+    let pg = args.database ? args.database : data.filter((x) => x.addon_service.name === 'alamo-postgresql' || x.addon_service.name === 'akkeris-postgresql')[0]
     if(!pg) {
       return appkit.termial.error("Unable to find any postgres database")
     }
@@ -28,7 +28,7 @@ function backup_capture (appkit, args) {
     if(err) {
       return appkit.terminal.error(err);
     }
-    let pg = args.database ? args.database : data.filter((x) => x.addon_service.name === 'alamo-postgresql')[0]
+    let pg = args.database ? args.database : data.filter((x) => x.addon_service.name === 'alamo-postgresql' || x.addon_service.name === 'akkeris-postgresql')[0]
     if(!pg) {
       return appkit.termial.error("Unable to find any postgres database")
     }
@@ -51,7 +51,7 @@ function backup_restore (appkit, args) {
     if(err) {
       return appkit.terminal.error(err);
     }
-    let pg = args.database ? args.database : data.filter((x) => x.addon_service.name === 'alamo-postgresql')[0]
+    let pg = args.database ? args.database : data.filter((x) => x.addon_service.name === 'alamo-postgresql' || x.addon_service.name === 'akkeris-postgresql')[0]
     if(!pg) {
       return appkit.termial.error("Unable to find any postgres database")
     }
