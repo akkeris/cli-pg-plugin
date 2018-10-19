@@ -23,8 +23,8 @@ async function getCredentials(appkit, app, dbAddon){
 
 async function getPostgresAddon(appkit, appName, addonName) {
   let get = util.promisify(appkit.api.get);
-  let attachments = (await get(`/apps/${appName}/addon-attachments`)).filter(a => a.addon_service.name == 'alamo-postgresql');
-  let addons = (await get(`/apps/${appName}/addons`)).filter(a => a.addon_service.name == 'alamo-postgresql');
+  let attachments = (await get(`/apps/${appName}/addon-attachments`)).filter(a => a.addon_service.name == 'alamo-postgresql' || a.addon_service.name == 'akkeris-postgresql');
+  let addons = (await get(`/apps/${appName}/addons`)).filter(a => a.addon_service.name == 'alamo-postgresql' || a.addon_service.name == 'akkeris-postgresql');
 
   if (addons.length === 0 && attachments.length === 0) {
     throw `No postgres addons (attached or owned) were found in ${appName}.`;
