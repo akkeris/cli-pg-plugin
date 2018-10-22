@@ -1,71 +1,39 @@
 
-const pg = require('../lib/pg')
+const assert = require('assert')
+const common = require('../lib/common')
 
-function backup_list (appkit, args) {
-  appkit.api.get('/apps/' + args.app + '/addons', (err, data) => {
-    if(err) {
-      return appkit.terminal.error(err);
-    }
-    let pg = args.database ? args.database : data.filter((x) => x.addon_service.name === 'alamo-postgresql' || x.addon_service.name === 'akkeris-postgresql')[0]
-    if(!pg) {
-      return appkit.termial.error("Unable to find any postgres database")
-    }
-    if(pg.id) {
-      pg = pg.id
-    }
-    appkit.api.post(null, '/apps/' + args.app + '/addons/' + pg + '/actions/backups', (err, data) => {
-      if(err) {
-        appkit.terminal.error(err)
-      } else {
-        appkit.terminal.table(data)
-      }
-    })
-  })
+async function backup_list (appkit, args) {
+  try {
+    let pg = await common.find(appkit, args.app, args.database)
+    let call = pg.addon_service.name === 'akkeris-postgresql' ? appkit.api.get : appkit.api.post.bind(null, null)
+    appkit.terminal.table((await call(`/apps/${args.app}/addons/${pg.id}/actions/backups`))
+      .sort((a, b) => (new Date(a.created_at).getTime()) > (new Date(b.created_at).getTime()) ? 1 : -1))
+  } catch (e) {
+    return appkit.terminal.error(e)
+  }
 }
 
-function backup_capture (appkit, args) {
-  appkit.api.get('/apps/' + args.app + '/addons', (err, data) => {
-    if(err) {
-      return appkit.terminal.error(err);
-    }
-    let pg = args.database ? args.database : data.filter((x) => x.addon_service.name === 'alamo-postgresql' || x.addon_service.name === 'akkeris-postgresql')[0]
-    if(!pg) {
-      return appkit.termial.error("Unable to find any postgres database")
-    }
-    if(pg.id) {
-      pg = pg.id
-    }
-    appkit.api.post(null, '/apps/' + args.app + '/addons/' + pg + '/actions/backups-capture', (err, data) => {
-      if(err || data.error) {
-        appkit.terminal.error(err || data ? data.error : '')
-      } else {
-        appkit.terminal.vtable(data)
-      }
-    })
-  })
+async function backup_capture (appkit, args) {
+  try {
+    let pg = await common.find(appkit, args.app, args.database)
+    let action = pg.addon_service.name === 'akkeris-postgresql' ? 'backups' : 'backups-capture'
+    appkit.terminal.vtable(await appkit.api.post(null, `/apps/${args.app}/addons/${pg.id}/actions/${action}`))
+  } catch (e) {
+    return appkit.terminal.error(e)
+  }
 }
 
-function backup_restore (appkit, args) {
-  console.assert(args.BACKUP && args.BACKUP !== '', 'A backup to restore was not specified.')
-  appkit.api.get('/apps/' + args.app + '/addons', (err, data) => {
-    if(err) {
-      return appkit.terminal.error(err);
-    }
-    let pg = args.database ? args.database : data.filter((x) => x.addon_service.name === 'alamo-postgresql' || x.addon_service.name === 'akkeris-postgresql')[0]
-    if(!pg) {
-      return appkit.termial.error("Unable to find any postgres database")
-    }
-    if(pg.id) {
-      pg = pg.id
-    }
-    appkit.api.post(JSON.stringify({"backup":args.BACKUP}), '/apps/' + args.app + '/addons/' + pg + '/actions/backups-restore', (err, data) => {
-      if(err || data.error) {
-        appkit.terminal.error(err || data ? data.error : '')
-      } else {
-        appkit.terminal.vtable(data)
-      }
-    })
-  })
+async function backup_restore (appkit, args) {  
+  try {
+    assert.ok(args.BACKUP && args.BACKUP !== '', 'A backup to restore was not specified.')
+    let pg = await common.find(appkit, args.app, args.database)
+    let action = pg.addon_service.name === 'akkeris-postgresql' ? `backups/${args.BACKUP}` : 'backups-restore'
+    let payload = pg.addon_service.name === 'akkeris-postgresql' ? null : JSON.stringify({"backup":args.BACKUP})
+    let method = pg.addon_service.name === 'akkeris-postgresql' ? appkit.api.put : appkit.api.post
+    appkit.terminal.vtable(await method(payload, `/apps/${args.app}/addons/${pg.id}/actions/${action}`))
+  } catch (e) {
+    return appkit.terminal.error(e)
+  }
 }
 
 module.exports = {

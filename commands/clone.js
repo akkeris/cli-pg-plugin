@@ -4,14 +4,12 @@ const pg = require('../lib/pg'),
       url = require('url');
 
       
-async function getCredentials(appkit, app, dbAddon){
-  const post = util.promisify(appkit.api.post);
-        
-  let creds = await post(null, `/apps/${app}/addons/${dbAddon.id}/actions/credentials`);
+async function getCredentials(appkit, app, dbAddon) {      
+  let creds = await appkit.api.post(null, `/apps/${app}/addons/${dbAddon.id}/actions/credentials`);
   if (!creds) {
     let task = appkit.terminal.task(`###===### Creating credentials for ${dbAddon.name} ${app}`);
     task.start();
-    creds = [await post(null, `/apps/${app}/addons/${dbAddon.id}/actions/credentials-create`)];
+    creds = [await appkit.api.post(null, `/apps/${app}/addons/${dbAddon.id}/actions/credentials-create`)];
     if (creds.length === 0){
       task.end('error');
       throw `Could not create credentials in ${args.source}.`;
@@ -22,9 +20,8 @@ async function getCredentials(appkit, app, dbAddon){
 }
 
 async function getPostgresAddon(appkit, appName, addonName) {
-  let get = util.promisify(appkit.api.get);
-  let attachments = (await get(`/apps/${appName}/addon-attachments`)).filter(a => a.addon_service.name == 'alamo-postgresql' || a.addon_service.name == 'akkeris-postgresql');
-  let addons = (await get(`/apps/${appName}/addons`)).filter(a => a.addon_service.name == 'alamo-postgresql' || a.addon_service.name == 'akkeris-postgresql');
+  let attachments = (await appkit.api.get(`/apps/${appName}/addon-attachments`)).filter(a => a.addon_service.name == 'alamo-postgresql' || a.addon_service.name == 'akkeris-postgresql');
+  let addons = (await appkit.api.get(`/apps/${appName}/addons`)).filter(a => a.addon_service.name == 'alamo-postgresql' || a.addon_service.name == 'akkeris-postgresql');
 
   if (addons.length === 0 && attachments.length === 0) {
     throw `No postgres addons (attached or owned) were found in ${appName}.`;
@@ -45,7 +42,7 @@ async function getPostgresAddon(appkit, appName, addonName) {
     throw `No postgres addon found for ${appName} ${addonName}`;
   }
 
-  let config = await get(`/apps/${appName}/config-vars`);
+  let config = await appkit.api.get(`/apps/${appName}/config-vars`);
   let url, user, pass, host, port, dbName;
   for (let key in config){
     if (/postgres:\/\/(.*):(.*)@(.*):(.*)\/(.*)/.test(config[key])){
