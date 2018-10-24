@@ -1,26 +1,24 @@
 
-const pg = require('../lib/pg')
 
-function restart(appkit, args) {
-  appkit.api.get('/apps/' + args.app + '/addons', (err, data) => {
-    if(err) {
-      return appkit.terminal.error(err);
+const assert = require('assert')
+const common = require('../lib/common')
+
+async function restart(appkit, args) {
+  let task = appkit.terminal.task("Restarting database")
+  task.start()
+  try {
+    let pg = await common.find(appkit, args.app, args.database)
+    if(pg.addon_service.name === 'akkeris-postgresql') {
+      await appkit.api.put(null, `/apps/${args.app}/addons/${pg.id}/actions/restart`)
+    } else {
+      await appkit.api.post(null, `/apps/${args.app}/addons/${pg.id}/actions/restart`)
     }
-    let pg = args.database ? args.database : data.filter((x) => x.addon_service.name === 'alamo-postgresql' || x.addon_service.name === 'akkeris-postgresql')[0]
-    if(!pg) {
-      return appkit.termial.error("Unable to find any postgres database")
-    }
-    if(pg.id) {
-      pg = pg.id
-    }
-    appkit.api.post(null, '/apps/' + args.app + '/addons/' + pg + '/actions/restart', (err, data) => {
-      if(err) {
-        appkit.terminal.error(err)
-      } else {
-        console.log(data.join('\n'))
-      }
-    })
-  })
+    task.end('ok')
+  } catch (err) {
+    task.end('error')
+    appkit.terminal.error(err)
+  }
+
 }
 
 module.exports = {

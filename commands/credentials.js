@@ -1,103 +1,72 @@
 
-const pg = require('../lib/pg')
+const assert = require('assert')
+const common = require('../lib/common')
 
-function cred_list (appkit, args) {
-  appkit.api.get('/apps/' + args.app + '/addons', (err, data) => {
-    if(err) {
-      return appkit.terminal.error(err);
+async function cred_list (appkit, args) {
+  try {
+    let pg = await common.find(appkit, args.app, args.database)
+    let caller = pg.addon_service.name === 'akkeris-postgresql' ? appkit.api.get : appkit.api.post.bind(null, null)
+    let uri = pg.addon_service.name === 'akkeris-postgresql' ? `/apps/${args.app}/addons/${pg.id}/actions/roles` : `/apps/${args.app}/addons/${pg.id}/actions/credentials`
+    let data = await caller(uri)
+    if(!data || data.length === 0) {
+      console.log(appkit.terminal.markdown("###===### No credentials exist"))
+    } else {
+      data = data.map((x) => {
+        delete x.Plan
+        return x
+      })
+      appkit.terminal.table(data)
     }
-    let pg = args.database ? args.database : data.filter((x) => x.addon_service.name === 'alamo-postgresql' || x.addon_service.name === 'akkeris-postgresql')[0]
-    if(!pg) {
-      return appkit.termial.error("Unable to find any postgres database")
-    }
-    if(pg.id) {
-      pg = pg.id
-    }
-    appkit.api.post(null, '/apps/' + args.app + '/addons/' + pg + '/actions/credentials', (err, data) => {
-
-      if(err) {
-        appkit.terminal.error(err)
-      } else {
-        if(!data) {
-          console.log("No credentials exist.")
-        } else {
-          appkit.terminal.table(data)
-        }
-      }
-    })
-  })
+  } catch (err) {
+    appkit.terminal.error(err);
+  }
 }
 
-function cred_create (appkit, args) {
-  appkit.api.get('/apps/' + args.app + '/addons', (err, data) => {
-    if(err) {
-      return appkit.terminal.error(err);
-    }
-    let pg = args.database ? args.database : data.filter((x) => x.addon_service.name === 'alamo-postgresql' || x.addon_service.name === 'akkeris-postgresql')[0]
-    if(!pg) {
-      return appkit.termial.error("Unable to find any postgres database")
-    }
-    if(pg.id) {
-      pg = pg.id
-    }
-    appkit.api.post(null, '/apps/' + args.app + '/addons/' + pg + '/actions/credentials-create', (err, data) => {
-      if(err) {
-        appkit.terminal.error(err)
-      } else {
-        delete data.Plan
-        appkit.terminal.vtable(data)
-      }
-    })
-  })
+async function cred_create (appkit, args) {
+  try {
+    let pg = await common.find(appkit, args.app, args.database)
+    let action = pg.addon_service.name === 'akkeris-postgresql' ? 'roles' : 'credentials-create'
+    let data = await appkit.api.post(null, `/apps/${args.app}/addons/${pg.id}/actions/${action}`)
+    delete data.Plan
+    appkit.terminal.vtable(data)
+  } catch (err) {
+    appkit.terminal.error(err);
+  }
 }
 
-function cred_destroy (appkit, args) {
-  console.assert(args.CREDENTIAL && args.CREDENTIAL !== '', 'No credential was provided to destroy.')
-  appkit.api.get('/apps/' + args.app + '/addons', (err, data) => {
-    if(err) {
-      return appkit.terminal.error(err);
+async function cred_destroy (appkit, args) {
+  try {
+    assert.ok(args.CREDENTIAL && args.CREDENTIAL !== '', 'No credential was provided to destroy.')
+    let pg = await common.find(appkit, args.app, args.database)
+    let data = null
+    if (pg.addon_service.name === 'akkeris-postgresql') {
+      data = await appkit.api.delete(null, `/apps/${args.app}/addons/${pg.id}/actions/roles/${args.CREDENTIAL}`)
+    } else {
+      data = await appkit.api.post(JSON.stringify({"role":args.CREDENTIAL}), `/apps/${args.app}/addons/${pg.id}/actions/credentials-destroy`)
     }
-    let pg = args.database ? args.database : data.filter((x) => x.addon_service.name === 'alamo-postgresql' || x.addon_service.name === 'akkeris-postgresql')[0]
-    if(!pg) {
-      return appkit.termial.error("Unable to find any postgres database")
-    }
-    if(pg.id) {
-      pg = pg.id
-    }
-    appkit.api.post(JSON.stringify({"role":args.CREDENTIAL}), '/apps/' + args.app + '/addons/' + pg + '/actions/credentials-destroy', (err, data) => {
-      if(err) {
-        appkit.terminal.error(err)
-      } else {
-        delete data.Plan
-        appkit.terminal.vtable(data)
-      }
-    })
-  })
+    delete data.Plan
+    appkit.terminal.vtable(data)
+  } catch (err) {
+    appkit.terminal.error(err);
+  }
 }
 
 
-function cred_rotate (appkit, args) {
-  console.assert(args.CREDENTIAL && args.CREDENTIAL !== '', 'No credential was provided to rotate.')
-  appkit.api.get('/apps/' + args.app + '/addons', (err, data) => {
-    if(err) {
-      return appkit.terminal.error(err);
+async function cred_rotate (appkit, args) {
+  try {
+    assert.ok(args.CREDENTIAL && args.CREDENTIAL !== '', 'No credential was provided to rotate.')
+    let pg = await common.find(appkit, args.app, args.database)
+    let data = null
+    if (pg.addon_service.name === 'akkeris-postgresql') {
+      data = await appkit.api.put(null, `/apps/${args.app}/addons/${pg.id}/actions/roles/${args.CREDENTIAL}`)
+    } else {
+      data = await appkit.api.post(JSON.stringify({"role":args.CREDENTIAL}), `/apps/${args.app}/addons/${pg.id}/actions/roles/${args.CREDENTIAL}`)
     }
-    let pg = args.database ? args.database : data.filter((x) => x.addon_service.name === 'alamo-postgresql' || x.addon_service.name === 'akkeris-postgresql')[0]
-    if(!pg) {
-      return appkit.termial.error("Unable to find any postgres database")
-    }
-    if(pg.id) {
-      pg = pg.id
-    }
-    appkit.api.post(JSON.stringify({"role":args.CREDENTIAL}), '/apps/' + args.app + '/addons/' + pg + '/actions/credentials-rotate', (err, data) => {
-      if(err) {
-        appkit.terminal.error(err)
-      } else {
-        delete data.Plan
-        appkit.terminal.vtable(data)
-      }
-    })
-  })
+    delete data.Plan
+    appkit.terminal.vtable(data)
+  } catch (err) {
+    appkit.terminal.error(err)
+  }
 }
 
 module.exports = {

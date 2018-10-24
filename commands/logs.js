@@ -1,26 +1,19 @@
 
-const pg = require('../lib/pg')
+const common = require('../lib/common')
 
-function log_trails(appkit, args) {
-  appkit.api.get('/apps/' + args.app + '/addons', (err, data) => {
-    if(err) {
-      return appkit.terminal.error(err);
+async function log_trails(appkit, args) {
+  try {
+    let pg = await common.find(appkit, args.app, args.database)
+    if(pg.addon_service.name === 'akkeris-postgresql') {
+      let data = await appkit.api.get(`/apps/${args.app}/addons/${pg.id}/actions/logs`)
+      console.log(data.logs)
+    } else {
+      let data = await appkit.api.post(null, `/apps/${args.app}/addons/${pg.id}/actions/logs`)
+      console.log(data.join('\n'))
     }
-    let pg = args.database ? args.database : data.filter((x) => x.addon_service.name === 'alamo-postgresql' || x.addon_service.name === 'akkeris-postgresql')[0]
-    if(!pg) {
-      return appkit.termial.error("Unable to find any postgres database")
-    }
-    if(pg.id) {
-      pg = pg.id
-    }
-    appkit.api.post(null, '/apps/' + args.app + '/addons/' + pg + '/actions/logs', (err, data) => {
-      if(err) {
-        appkit.terminal.error(err)
-      } else {
-        console.log(data.join('\n'))
-      }
-    })
-  })
+  } catch (err) {
+    appkit.terminal.error(err)
+  }
 }
 
 module.exports = {
@@ -37,6 +30,12 @@ module.exports = {
         'demand':false,
         'string':true,
         'description':'The name of the postgres addon to use'
+      },
+      'all':{
+        'demand':false,
+        'boolean':true,
+        'default':false,
+        'description':'Show all available logs'
       }
     }
 
