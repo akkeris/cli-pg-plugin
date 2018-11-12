@@ -27,6 +27,32 @@ async function backup_capture (appkit, args) {
   }
 }
 
+async function wait_on_addon(appkit, args, addon, loading_message) {
+  let loader = appkit.terminal.loading(loading_message)
+  try {
+    loader.start()
+    let state = ''
+    for(let i=0; i < 1000; i++) {
+      if(i === 999) {
+        throw new Error('It seems this addon is taking too long to complete its task, you should contact your system administrator to see if everything is alright.')
+      }
+      addon = await appkit.api.get(`/apps/${args.app}/addons/${addon.id}`)
+      if(addon.state !== 'provisioning') {
+        loader.end()
+        return addon;
+      } else if (addon.state_description && addon.state_description !== '' && addon.state_description !== state) {
+        loader.end()
+        loader = appkit.terminal.loading(`${loading_message} (${addon.state_description})`)
+        loader.start()
+      }
+      await wait(5000)
+    }
+  } catch (e) {
+    loader.end()
+    throw e
+  }
+}
+
 async function backup_restore (appkit, args) {  
   let maintenance_ran = false;
   let loader = null
@@ -53,19 +79,7 @@ async function backup_restore (appkit, args) {
     loader.start()
     await method(payload, `/apps/${args.app}/addons/${pg.id}/actions/${action}`)
     loader.end()
-    loader = appkit.terminal.loading(appkit.terminal.markdown(`\n###===### Waiting for database to be restored on ~~${args.app}~~ for ~~${pg.name}~~ (this may take 15~30 minutes)`));
-    loader.start()
-    for (let i=0; i < 100; i++) {
-      if(i === 99) {
-        throw new Error('The database has not yet restored, it may still be in progress or an error may have occured. Please contact your local maytag man.')
-      }
-      await wait(5000) // addon status doesnt update (for rate limiting reasons) for every 30 seconds, so no point in lowering this.
-      let addon = await appkit.api.get(`/apps/${args.app}/addons/${pg.name}`)
-      if(addon.state !== 'provisioning') {
-        break;
-      }
-    }
-    loader.end();
+    await wait_on_addon(appkit, args, pg, appkit.terminal.markdown(`###===### Waiting for database to be restored on ~~${args.app}~~ for ~~${pg.name}~~`));
     console.log(appkit.terminal.markdown(`###===### Database ~~${pg.name}~~ was successfully restored to ${args.BACKUP}.\n`));
   } catch (e) {
     if(loader) {
