@@ -11,7 +11,6 @@ async function run (appkit, args) {
         return column
       }
     };
-
     const query = `
       SELECT 
         pid,
@@ -27,13 +26,13 @@ async function run (appkit, args) {
     try {
       appkit.terminal.table(
         (await pg.execAsync(db, query))
-          .map((x) => ({query:x.query.trim(), ...x})));
+          .map((x) => ({...x, query:x.query.trim()})));
     } catch (e) {
       // incase the first query fails, retry it without 
       // the waiting column, its unavailable in pg10.
       appkit.terminal.table(
         (await pg.execAsync(db, query.replace('waiting,', '\'N/A\' as waiting,')))
-          .map((x) => ({query:x.query.trim(), ...x})));
+          .map((x) => ({...x, query:x.query.trim()})));
     }
   } catch (err) {
     return appkit.terminal.error(err);
