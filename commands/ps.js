@@ -13,36 +13,27 @@ async function run (appkit, args) {
     };
 
     const query = `
-SELECT 
-  pid,
-  datname as database,
-  usename as user,
-  client_addr as ip_address,
-  backend_start as start,
-  state_change as last_change,
-  waiting,
-  ${truncatedQueryString('pg_stat_activity.')} as query
-from pg_stat_activity where state='active'
-`;
+      SELECT 
+        pid,
+        datname as database,
+        usename as user,
+        client_addr as ip_address,
+        backend_start as start,
+        state_change as last_change,
+        waiting,
+        ${truncatedQueryString('pg_stat_activity.')} as query
+      from pg_stat_activity where state='active'
+    `;
     try {
-      let data = await pg.execAsync(db, query);
-      appkit.terminal.table(data.map((x) => ({query:x.query.trim(), ...x})));
+      appkit.terminal.table(
+        (await pg.execAsync(db, query))
+          .map((x) => ({query:x.query.trim(), ...x})));
     } catch (e) {
-
-      const query10 = `
-SELECT 
-  pid,
-  datname as database,
-  usename as user,
-  client_addr as ip_address,
-  backend_start as start,
-  state_change as last_change,
-  'N/A' as waiting,
-  ${truncatedQueryString('pg_stat_activity.')} as query
-from pg_stat_activity where state='active'
-` 
-      let data = await pg.execAsync(db, query10);
-      appkit.terminal.table(data.map((x) => ({query:x.query.trim(), ...x})));
+      // incase the first query fails, retry it without 
+      // the waiting column, its unavailable in pg10.
+      appkit.terminal.table(
+        (await pg.execAsync(db, query.replace('waiting,', '\'N/A\' as waiting,')))
+          .map((x) => ({query:x.query.trim(), ...x})));
     }
   } catch (err) {
     return appkit.terminal.error(err);
