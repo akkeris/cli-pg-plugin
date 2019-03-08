@@ -26,10 +26,7 @@ from pg_stat_activity where state='active'
 `;
     try {
       let data = await pg.execAsync(db, query);
-      appkit.terminal.table(data.map((x) => {
-        x.query = x.query.trim();
-        return x;
-      }));
+      appkit.terminal.table(data.map((x) => ({query:x.query.trim(), ...x})));
     } catch (e) {
 
       const query10 = `
@@ -45,10 +42,7 @@ SELECT
 from pg_stat_activity where state='active'
 ` 
       let data = await pg.execAsync(db, query10);
-      appkit.terminal.table(data.map((x) => {
-        x.query = x.query.trim();
-        return x;
-      }));
+      appkit.terminal.table(data.map((x) => ({query:x.query.trim(), ...x})));
     }
   } catch (err) {
     return appkit.terminal.error(err);
