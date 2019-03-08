@@ -1,12 +1,8 @@
-
 const pg = require('../lib/pg')
 
-
-function run (appkit, args) {
-  pg.database(appkit, args.app, args.database, function(err, db) {
-    if(err) {
-      return appkit.terminal.error(err)
-    }
+async function run (appkit, args) {
+  try {
+    let db = await pg.dbAsync(appkit, args.app, args.database);
     let truncatedQueryString = prefix => {
       let column = `${prefix}query`
       if (args.truncate) {
@@ -14,7 +10,8 @@ function run (appkit, args) {
       } else {
         return column
       }
-    }
+    };
+
     const query = `
 SELECT 
   pid,
@@ -26,19 +23,36 @@ SELECT
   waiting,
   ${truncatedQueryString('pg_stat_activity.')} as query
 from pg_stat_activity where state='active'
-`
+`;
+    try {
+      let data = await pg.execAsync(db, query);
+      appkit.terminal.table(data.map((x) => {
+        x.query = x.query.trim();
+        return x;
+      }));
+    } catch (e) {
 
-    pg.exec(db, query, function(err, data) {
-      if(err) {
-        appkit.terminal.error(err);
-      } else {
-        appkit.terminal.table(data.map((x) => {
-          x.query = x.query.trim();
-          return x;
-        }));
-      }
-    })
-  })
+      const query10 = `
+SELECT 
+  pid,
+  datname as database,
+  usename as user,
+  client_addr as ip_address,
+  backend_start as start,
+  state_change as last_change,
+  'N/A' as waiting,
+  ${truncatedQueryString('pg_stat_activity.')} as query
+from pg_stat_activity where state='active'
+` 
+      let data = await pg.execAsync(db, query10);
+      appkit.terminal.table(data.map((x) => {
+        x.query = x.query.trim();
+        return x;
+      }));
+    }
+  } catch (err) {
+    return appkit.terminal.error(err);
+  }
 }
 
 
