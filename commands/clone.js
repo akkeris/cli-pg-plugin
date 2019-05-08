@@ -5,11 +5,11 @@ const pg = require('../lib/pg'),
 
       
 async function getCredentials(appkit, app, dbAddon) {      
-  let creds = await appkit.api.post(null, `/apps/${app}/addons/${dbAddon.id}/actions/credentials`);
+  let creds = await appkit.api.get(`/apps/${app}/addons/${dbAddon.id}/actions/roles`);
   if (!creds) {
     let task = appkit.terminal.task(`###===### Creating credentials for ${dbAddon.name} ${app}`);
     task.start();
-    creds = [await appkit.api.post(null, `/apps/${app}/addons/${dbAddon.id}/actions/credentials-create`)];
+    creds = [await appkit.api.post(null, `/apps/${app}/addons/${dbAddon.id}/actions/roles`)];
     if (creds.length === 0){
       task.end('error');
       throw `Could not create credentials in ${args.source}.`;
