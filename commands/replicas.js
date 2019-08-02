@@ -7,30 +7,35 @@ async function replica_list (appkit, args) {
     let pg = await common.find(appkit, args.app, args.database)
     let call = pg.addon_service.name === 'akkeris-postgresql' ? appkit.api.get : appkit.api.post.bind(null, null)
     let data = await appkit.api.get(`/apps/${args.app}/addons/${pg.id}/actions/replica`)
-    appkit.terminal.table(data)
+    if(!data || data.length === 0) {
+      console.log(appkit.terminal.markdown("###===### No replicas exist"))
+    } else {
+      appkit.terminal.vtable(data)
+    }
   } catch (e) {
     return appkit.terminal.error(e)
   }
 }
 
 async function replica_create (appkit, args) {
+  let task = appkit.terminal.task(`Creating **⬢ ${args.app}**${args.TYPE ? (" ^^^" + args.TYPE + "^^^") : ""}`);
+  task.start();
   try {
     let pg = await common.find(appkit, args.app, args.database)
     let action = pg.addon_service.name === 'akkeris-postgresql' ? 'replica' : 'replica-create'
     let data = await appkit.api.put(null, `/apps/${args.app}/addons/${pg.id}/actions/${action}`)
-    delete data.Plan
-    appkit.terminal.vtable(data)
+    task.end('ok');
   } catch (err) {
+    task.end('error')
     appkit.terminal.error(err);
   }
 }
 
 async function replica_destroy (appkit, args) {
   try {
-    assert.ok(args.REPLICA && args.REPLICA !== '', 'No replica was provided to destroy.')
     let pg = await common.find(appkit, args.app, args.database)
     let action = pg.addon_service.name === 'akkeris-postgresql' ? 'replica' : 'replica-destroy'
-    let data = await appkit.api.delete(null, `/apps/${args.app}/addons/${pg.id}/actions/${action}`)
+    let data = await appkit.api.delete(`/apps/${args.app}/addons/${pg.id}/actions/${action}`)
     delete data.Plan
     appkit.terminal.vtable(data)
   } catch (err) {
