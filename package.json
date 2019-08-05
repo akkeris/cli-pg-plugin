@@ -1,7 +1,7 @@
 {
   "name": "akkeris-pg-plugin",
   "description": "A aka CLI plugin for awesome pg:* commands that are also great and fun and super.",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "author": "Trevor Linton, Jeff Dickey (@dickeyxxx)",
   "bugs": {
     "url": "https://github.com/akkeris/cli-pg-plugin/issues"
