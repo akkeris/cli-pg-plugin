@@ -9,8 +9,10 @@ async function replica_list (appkit, args) {
     let data = await appkit.api.get(`/apps/${args.app}/addons/${pg.id}/actions/replica`)
     if(!data || data.length === 0) {
       console.log(appkit.terminal.markdown("###===### No replicas exist"))
+    } else if (data.description.includes("Not Found")) {
+      console.log(appkit.terminal.markdown("###===### No replicas exist"))
     } else {
-      appkit.terminal.vtable(data)
+      console.log(appkit.terminal.markdown("A replica exists for this database"))
     }
   } catch (e) {
     return appkit.terminal.error(e)
