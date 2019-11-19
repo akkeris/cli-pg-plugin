@@ -40,7 +40,7 @@ async function cred_destroy (appkit, args) {
     let pg = await common.find(appkit, args.app, args.database)
     let data = null
     if (pg.addon_service.name === 'akkeris-postgresql') {
-      data = await appkit.api.delete(null, `/apps/${args.app}/addons/${pg.id}/actions/roles/${args.CREDENTIAL}`)
+      data = await appkit.api.delete(`/apps/${args.app}/addons/${pg.id}/actions/roles/${args.CREDENTIAL}`)
     } else {
       data = await appkit.api.post(JSON.stringify({"role":args.CREDENTIAL}), `/apps/${args.app}/addons/${pg.id}/actions/credentials-destroy`)
     }
