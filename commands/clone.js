@@ -45,7 +45,7 @@ async function getPostgresAddon(appkit, appName, addonName) {
   let config = await appkit.api.get(`/apps/${appName}/config-vars`);
   let url, user, pass, host, port, dbName;
   for (let key in config){
-    if (/postgres:\/\/(.*):(.*)@(.*):(.*)\/(.*)/.test(config[key])){
+    if (key === "DATABASE_URL" && /postgres:\/\/(.*):(.*)@(.*):(.*)\/(.*)/.test(config[key])){
       if (url) 
         throw 'Multiple config vars found that look like postgres URLs in ' + appName;
 
