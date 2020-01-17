@@ -93,17 +93,16 @@ async function copy(appkit, args){
   try {
     const sourceAddon = await getPostgresAddon(appkit, args.source),
           targetAddon = await getPostgresAddon(appkit, args.target);
-
-    if(sourceAddon.pass === '[redacted]') {
+    
+    if(sourceAddon.pass === '[redacted]' || sourceAddon.pass === '' || sourceAddon.pass === 'redacted') {
       let sourceCreds = await getCredentials(appkit, args.source, sourceAddon);
-      [endpoint, host, port, db] = sourceCreds[0].Endpoint.match(/(.*):(.*)\/(.*)/);
+      let [endpoint, host, port, db] = sourceCreds[0].Endpoint.match(/(.*):(.*)\/(.*)/);
       sourceAddon.host = host;
       sourceAddon.endpoint = endpoint;
       sourceAddon.port = port;
       sourceAddon.dbName = db;
-      sourceAddon.user = sourceCreds[0].Username,
+      sourceAddon.user = sourceCreds[0].Username;
       sourceAddon.pass = sourceCreds[0].Password;
-
     }
     if(targetAddon.pass === '[redacted]') {
       throw new Error('Cannot copy database to target as its a protected database.')
@@ -126,13 +125,21 @@ async function pull(appkit, args){
           targetUri = args.TARGET,
           sourceAddon = await getPostgresAddon(appkit, sourceApp, args.source),
           sourceCreds = await getCredentials(appkit, sourceApp, sourceAddon);
-    let [endpoint, host, port, db] = sourceCreds[0].Endpoint.match(/(.*):(.*)\/(.*)/),
-    user = sourceCreds[0].Username,
-    pass = sourceCreds[0].Password;
+    
+    if(sourceAddon.pass === '[redacted]' || sourceAddon.pass === '' || sourceAddon.pass === 'redacted') {
+      let sourceCreds = await getCredentials(appkit, args.source, sourceAddon);
+      let [endpoint, host, port, db] = sourceCreds[0].Endpoint.match(/(.*):(.*)\/(.*)/);
+      sourceAddon.host = host;
+      sourceAddon.endpoint = endpoint;
+      sourceAddon.port = port;
+      sourceAddon.dbName = db;
+      sourceAddon.user = sourceCreds[0].Username;
+      sourceAddon.pass = sourceCreds[0].Password;
+    }
 
     console.log(appkit.terminal.markdown(`###===### Pulling **${sourceAddon.name}** -> ^^${targetUri}^^`));
 
-    let child = exec(`env PGPASSWORD="${pass}" pg_dump --verbose -F c -x -O -c -d ${db} -h ${host} -p ${port} -U ${user} | env${getEnvArgsFromUri(targetUri)} pg_restore --verbose --no-acl --no-owner ${getCommandArgsFromUri(targetUri)}`);
+    let child = exec(`env PGPASSWORD="${sourceAddon.pass}" pg_dump --verbose -F c -x -O -c -d ${sourceAddon.dbName} -h ${sourceAddon.host} -p ${sourceAddon.port} -U ${sourceAddon.user} | env${getEnvArgsFromUri(targetUri)} pg_restore --verbose --no-acl --no-owner ${getCommandArgsFromUri(targetUri)}`);
     child.stderr.on('data', (e) => process.stderr.write(e))
     child.stdout.on('data', (e) => process.stdout.write(e))
     child.on('exit', (code) => console.log(appkit.terminal.markdown('###===### Pull complete')))
