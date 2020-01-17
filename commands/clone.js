@@ -71,7 +71,7 @@ async function getPostgresAddon(appkit, appName, addonName) {
 }
 
 function getCommandArgsFromUri(targetUri) {
-  let uri = url.parse(targetUri);
+  let uri = new URL(targetUri);
   let options = '';
   options += uri.hostname ? ` -h ${uri.hostname}` : '';
   options += uri.port ? ` -p ${uri.port}` : '';
@@ -82,7 +82,7 @@ function getCommandArgsFromUri(targetUri) {
 
 
 function getEnvArgsFromUri(targetUri) {
-  let uri = url.parse(targetUri);
+  let uri = new URL(targetUri);
   let options = '';
   options += uri.password ? ` PGPASSWORD="${uri.password}"` : '';
   return options;
