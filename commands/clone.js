@@ -123,11 +123,9 @@ async function pull(appkit, args){
   try {
     const sourceApp = args.app,
           targetUri = args.TARGET,
-          sourceAddon = await getPostgresAddon(appkit, sourceApp, args.source),
-          sourceCreds = await getCredentials(appkit, sourceApp, sourceAddon);
-    
+          sourceAddon = await getPostgresAddon(appkit, sourceApp, args.source);
     if(sourceAddon.pass === '[redacted]' || sourceAddon.pass === '' || sourceAddon.pass === 'redacted') {
-      let sourceCreds = await getCredentials(appkit, args.source, sourceAddon);
+      const sourceCreds = await getCredentials(appkit, sourceApp, sourceAddon);
       let [endpoint, host, port, db] = sourceCreds[0].Endpoint.match(/(.*):(.*)\/(.*)/);
       sourceAddon.host = host;
       sourceAddon.endpoint = endpoint;
@@ -142,7 +140,13 @@ async function pull(appkit, args){
     let child = exec(`env PGPASSWORD="${sourceAddon.pass}" pg_dump --verbose -F c -x -O -c -d ${sourceAddon.dbName} -h ${sourceAddon.host} -p ${sourceAddon.port} -U ${sourceAddon.user} | env${getEnvArgsFromUri(targetUri)} pg_restore --verbose --no-acl --no-owner ${getCommandArgsFromUri(targetUri)}`);
     child.stderr.on('data', (e) => process.stderr.write(e))
     child.stdout.on('data', (e) => process.stdout.write(e))
-    child.on('exit', (code) => console.log(appkit.terminal.markdown('###===### Pull complete')))
+    child.on('exit', (code) => {
+      if(code === 0) {
+        console.log(appkit.terminal.markdown('###===### Pull complete'));
+      } else {
+        console.log(appkit.terminal.markdown('###===### Pull failed'));
+      }
+    });
     child.on('error', (err) => appkit.terminal.error(err))
   } catch (err) {
     appkit.terminal.error(err);
