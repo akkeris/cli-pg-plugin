@@ -7,7 +7,14 @@ async function restart(appkit, args) {
   let task = appkit.terminal.task("Restarting database")
   task.start()
   try {
-    let pg = await common.find(appkit, args.app, args.database)
+    let pg = await common.find(appkit, args.app, args.ADDON_ID_OR_NAME)
+    if(pg.state !== "provisioned") {
+      throw new Error("The database is currently undergoing maintenance, upgrades or is otherwise unavailable to be restarted.");
+    }
+    let plan_info = await appkit.api.get(`/addon-services/${pg.addon_service.name}/plans/${pg.plan.id}`)
+    if(plan_info.attributes.restartable !== true) {
+      throw new Error(`The ${pg.plan.name} addon:plan does not support restarting instances. Try upgrading to a plan that supports it.`)
+    }
     if(pg.addon_service.name === 'akkeris-postgresql') {
       await appkit.api.put(null, `/apps/${args.app}/addons/${pg.id}/actions/restart`)
     } else {
@@ -26,19 +33,13 @@ module.exports = {
     let require_options = {
       'app':{
         'alias':'a',
-        'demand':false,
+        'demand':true,
         'string':true,
         'description':'The app to act on.'
-      },
-      'database':{
-        'alias':'d',
-        'demand':false,
-        'string':true,
-        'description':'The name of the postgres addon to use'
       }
     }
 
-    appkit.args.command('pg:restart', 'restart postgres database', require_options, restart.bind(null, appkit))
+    appkit.args.command('pg:restart [ADDON_ID_OR_NAME]', 'Restarts a dedicated postgres database', require_options, restart.bind(null, appkit))
   },
   update:function() {},
   'group':'pg',
