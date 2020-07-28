@@ -9,7 +9,7 @@ async function restart(appkit, args) {
   try {
     let pg = await common.find(appkit, args.app, args.ADDON_ID_OR_NAME)
     if(pg.state !== "provisioned") {
-      throw new Error("The database is currently undergoing maintenance, upgrades or is otherwise unavailable to be restarted.");
+      throw new Error("The database is currently undergoing maintenance, upgrades or is otherwise unavailable to be restarted.")
     }
     let plan_info = await appkit.api.get(`/addon-services/${pg.addon_service.name}/plans/${pg.plan.id}`)
     if(plan_info.attributes.restartable !== true) {
