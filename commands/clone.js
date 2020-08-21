@@ -3,72 +3,6 @@ const pg = require('../lib/pg'),
       exec = require('child_process').exec,
       url = require('url');
 
-      
-async function getCredentials(appkit, app, dbAddon) {      
-  let creds = await appkit.api.get(`/apps/${app}/addons/${dbAddon.id}/actions/roles`);
-  if (!creds) {
-    let task = appkit.terminal.task(`###===### Creating credentials for ${dbAddon.name} ${app}`);
-    task.start();
-    creds = [await appkit.api.post(null, `/apps/${app}/addons/${dbAddon.id}/actions/roles`)];
-    if (creds.length === 0){
-      task.end('error');
-      throw `Could not create credentials in ${args.source}.`;
-    }
-    task.end('ok');
-  }
-  return creds;
-}
-
-async function getPostgresAddon(appkit, appName, addonName) {
-  let attachments = (await appkit.api.get(`/apps/${appName}/addon-attachments`)).filter(a => a.addon_service.name == 'alamo-postgresql' || a.addon_service.name == 'akkeris-postgresql');
-  let addons = (await appkit.api.get(`/apps/${appName}/addons`)).filter(a => a.addon_service.name == 'alamo-postgresql' || a.addon_service.name == 'akkeris-postgresql');
-
-  if (addons.length === 0 && attachments.length === 0) {
-    throw `No postgres addons (attached or owned) were found in ${appName}.`;
-  }
-
-  let addon;
-  
-  if (addonName) {
-    attachments = attachments.filter((x) => x.name === addonName)
-    addons = addons.filter((x) => x.name === addonName)
-  }
-
-  if (addons.length === 1) {
-    addon = addons[0];
-  } else if (attachments.length === 1){
-    addon = attachments[0];
-  } else {
-    throw `No postgres addon found for ${appName} ${addonName}`;
-  }
-
-  let config = await appkit.api.get(`/apps/${appName}/config-vars`);
-  let url, user, pass, host, port, dbName;
-  for (let key in config){
-    if (key === "DATABASE_URL" && /postgres:\/\/(.*):(.*)@(.*):(.*)\/(.*)/.test(config[key])){
-      if (url) 
-        throw 'Multiple config vars found that look like postgres URLs in ' + appName;
-
-      [url, user, pass, host, port, dbName] = config[key].match(/postgres:\/\/(.*):(.*)@(.*):(.*)\/(.*)/);
-    }
-  }
-
-  if (!url) {
-    throw 'Cannot find db URL in config for ' + appName;
-  }
-
-  return {
-    id: addon.id,
-    name: addon.name,
-    plan: addon.plan.name,
-    url,
-    host,
-    port,
-    user,
-    pass,
-    dbName
-  };
-}
 
 function getCommandArgsFromUri(targetUri) {
   let uri = new URL(targetUri);
@@ -91,18 +25,18 @@ function getEnvArgsFromUri(targetUri) {
 
 async function copy(appkit, args){
   try {
-    const sourceAddon = await getPostgresAddon(appkit, args.source),
-          targetAddon = await getPostgresAddon(appkit, args.target);
+    const sourceAddon = await pg.find(appkit, args.source),
+          targetAddon = await pg.find(appkit, args.target);
     
     if(sourceAddon.pass === '[redacted]' || sourceAddon.pass === '' || sourceAddon.pass === 'redacted') {
-      let sourceCreds = await getCredentials(appkit, args.source, sourceAddon);
-      let [endpoint, host, port, db] = sourceCreds[0].Endpoint.match(/(.*):(.*)\/(.*)/);
+      let sourceCreds = await pg.credentials(appkit, args.source, sourceAddon);
+      let [endpoint, host, port, db] = sourceCreds.Endpoint.match(/(.*):(.*)\/(.*)/);
       sourceAddon.host = host;
       sourceAddon.endpoint = endpoint;
       sourceAddon.port = port;
       sourceAddon.dbName = db;
-      sourceAddon.user = sourceCreds[0].Username;
-      sourceAddon.pass = sourceCreds[0].Password;
+      sourceAddon.user = sourceCreds.Username;
+      sourceAddon.pass = sourceCreds.Password;
     }
     if(targetAddon.pass === '[redacted]') {
       throw new Error('Cannot copy database to target as its a protected database.')
@@ -123,16 +57,16 @@ async function pull(appkit, args){
   try {
     const sourceApp = args.app,
           targetUri = args.TARGET,
-          sourceAddon = await getPostgresAddon(appkit, sourceApp, args.source);
+          sourceAddon = await pg.find(appkit, sourceApp, args.source);
     if(sourceAddon.pass === '[redacted]' || sourceAddon.pass === '' || sourceAddon.pass === 'redacted') {
-      const sourceCreds = await getCredentials(appkit, sourceApp, sourceAddon);
-      let [endpoint, host, port, db] = sourceCreds[0].Endpoint.match(/(.*):(.*)\/(.*)/);
+      const sourceCreds = await pg.credentials(appkit, sourceApp, sourceAddon);
+      let [endpoint, host, port, db] = sourceCreds.Endpoint.match(/(.*):(.*)\/(.*)/);
       sourceAddon.host = host;
       sourceAddon.endpoint = endpoint;
       sourceAddon.port = port;
       sourceAddon.dbName = db;
-      sourceAddon.user = sourceCreds[0].Username;
-      sourceAddon.pass = sourceCreds[0].Password;
+      sourceAddon.user = sourceCreds.Username;
+      sourceAddon.pass = sourceCreds.Password;
     }
 
     console.log(appkit.terminal.markdown(`###===### Pulling **${sourceAddon.name}** -> ^^${targetUri}^^`));

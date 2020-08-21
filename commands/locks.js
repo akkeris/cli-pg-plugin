@@ -38,10 +38,14 @@ function run (appkit, args) {
       if(err) {
         appkit.terminal.error(err);
       } else {
-        appkit.terminal.table(data.map((x) => {
-          x.query_snippet = x.query_snippet.trim()
-          return x;
-        }));
+        if(data.length === 0) {
+          console.log(appkit.terminal.markdown('###===### No locks were found.'));
+        } else {
+          appkit.terminal.table(data.map((x) => {
+            x.query_snippet = x.query_snippet.trim()
+            return x;
+          }));
+        }
       }
     })
   })
