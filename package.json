@@ -7,7 +7,7 @@
     "url": "https://github.com/akkeris/cli-pg-plugin/issues"
   },
   "dependencies": {
-    "pg": "^8.4.0"
+    "pg": "^8.5.1"
   },
   "devDependencies": {},
   "homepage": "https://github.com/akkeris/cli-pg-plugin",
